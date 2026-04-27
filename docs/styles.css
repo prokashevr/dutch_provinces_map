@@ -157,16 +157,16 @@ body {
 
 /* ───────── Landmarks ───────── */
 
-.landmark {
-    pointer-events: none;
-    transition: transform 0.25s ease;
-}
+.landmark { cursor: pointer; }
 
 .lm-bg {
-    fill: rgba(31, 38, 48, 0.78);
-    stroke: rgba(255, 255, 255, 0.85);
+    fill: rgba(31, 38, 48, 0.82);
+    stroke: rgba(255, 255, 255, 0.9);
     stroke-width: 1.4;
+    transition: r 0.18s ease, fill 0.18s ease;
 }
+
+.landmark:hover .lm-bg { r: 13; fill: rgba(31, 38, 48, 0.95); }
 
 .lm-icon { color: #fff; }
 

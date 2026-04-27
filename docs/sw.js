@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nl-provinces-v3';
+const CACHE_NAME = 'nl-provinces-v4';
 
 const SHELL_ASSETS = [
     './',
@@ -6,7 +6,9 @@ const SHELL_ASSETS = [
     './styles.css',
     './app.js',
     './manifest.json',
-    './icons/icon.svg'
+    './icons/icon.svg',
+    './icons/icon-180.png',
+    './icons/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
