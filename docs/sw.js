@@ -1,10 +1,13 @@
-const CACHE_NAME = 'nl-provinces-v4';
+// Bump this after changing any shell asset so installed PWAs update correctly.
+const CACHE_NAME = 'nl-provinces-v5';
 
 const SHELL_ASSETS = [
     './',
     './index.html',
     './styles.css',
     './app.js',
+    './provinces.js',
+    './storage.js',
     './manifest.json',
     './icons/icon.svg',
     './icons/icon-180.png',
@@ -45,7 +48,7 @@ self.addEventListener('fetch', (event) => {
                     caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
                 }
                 return response;
-            }).catch(() => cached);
+            }).catch(() => cached || Response.error());
         })
     );
 });
