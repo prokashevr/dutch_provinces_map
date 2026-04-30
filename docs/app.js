@@ -1,49 +1,30 @@
-const STORAGE_KEY = 'dutchProvincesMap_v1';
+import { PROVINCES, TOTAL_PROVINCES, isKnownProvince, getProvinceName } from './provinces.js';
+import { loadVisited, saveVisited } from './storage.js';
 
-const PROVINCES = [
-    { id: 'friesland',      name: 'Friesland' },
-    { id: 'groningen',      name: 'Groningen' },
-    { id: 'drenthe',        name: 'Drenthe' },
-    { id: 'overijssel',     name: 'Overijssel' },
-    { id: 'flevoland',      name: 'Flevoland' },
-    { id: 'noord-holland',  name: 'Noord-Holland' },
-    { id: 'zuid-holland',   name: 'Zuid-Holland' },
-    { id: 'utrecht',        name: 'Utrecht' },
-    { id: 'gelderland',     name: 'Gelderland' },
-    { id: 'zeeland',        name: 'Zeeland' },
-    { id: 'noord-brabant',  name: 'Noord-Brabant' },
-    { id: 'limburg',        name: 'Limburg' },
-];
+function getRequiredElement(id) {
+    const el = document.getElementById(id);
+    if (!el) throw new Error(`Required element #${id} is missing from the DOM`);
+    return el;
+}
 
-const TOTAL = PROVINCES.length;
+const elements = {
+    map:          getRequiredElement('map'),
+    count:        getRequiredElement('count'),
+    progressBar:  getRequiredElement('progressBar'),
+    provinceList: getRequiredElement('provinceList'),
+    undoBtn:      getRequiredElement('undoBtn'),
+    resetBtn:     getRequiredElement('resetBtn'),
+    tooltip:      getRequiredElement('tooltip'),
+    status:       getRequiredElement('status'),
+};
 
 let state = {
-    visited: {},          // { friesland: true, ... }
+    visited: loadVisited(),
     lastAction: null      // { id, prevValue } for one-level undo
 };
 
 let statusTimer = null;
 let tooltipTimer = null;
-
-/* ───────── Persistence ───────── */
-
-function loadState() {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-            const saved = JSON.parse(raw);
-            if (saved && saved.visited) {
-                state.visited = saved.visited;
-            }
-        }
-    } catch (e) { /* corrupt or unavailable storage — ignore */ }
-}
-
-function saveState() {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ visited: state.visited }));
-    } catch (e) { /* quota or private mode — ignore */ }
-}
 
 /* ───────── Render ───────── */
 
@@ -53,23 +34,22 @@ function visitedCount() {
 
 function render() {
     const count = visitedCount();
-    document.getElementById('count').textContent = count;
-    document.getElementById('progressBar').style.width = `${(count / TOTAL) * 100}%`;
+    elements.count.textContent = count;
+    elements.progressBar.style.width = `${(count / TOTAL_PROVINCES) * 100}%`;
 
     PROVINCES.forEach(p => {
-        const path = document.querySelector(`.province[data-province="${p.id}"]`);
-        const item = document.querySelector(`.pv-item[data-province="${p.id}"]`);
+        const path = elements.map.querySelector(`.province[data-province="${p.id}"]`);
+        const item = elements.provinceList.querySelector(`.pv-item[data-province="${p.id}"]`);
         const isVisited = !!state.visited[p.id];
         if (path) path.classList.toggle('visited', isVisited);
         if (item) item.classList.toggle('is-visited', isVisited);
     });
 
-    document.getElementById('undoBtn').disabled = !state.lastAction;
+    elements.undoBtn.disabled = !state.lastAction;
 }
 
 function buildList() {
-    const ul = document.getElementById('provinceList');
-    ul.innerHTML = PROVINCES
+    elements.provinceList.innerHTML = PROVINCES
         .slice()
         .sort((a, b) => a.name.localeCompare(b.name))
         .map(p => `
@@ -83,23 +63,22 @@ function buildList() {
 /* ───────── Interaction ───────── */
 
 function toggleProvince(id, source) {
-    const province = PROVINCES.find(p => p.id === id);
-    if (!province) return;
+    if (!isKnownProvince(id)) return;
 
     state.lastAction = { id, prevValue: !!state.visited[id] };
     state.visited[id] = !state.visited[id];
 
-    saveState();
+    saveVisited(state.visited);
     render();
     popPath(id);
 
     if (navigator.vibrate) navigator.vibrate(state.visited[id] ? 18 : 10);
 
-    if (visitedCount() === TOTAL) {
+    if (visitedCount() === TOTAL_PROVINCES) {
         if (navigator.vibrate) navigator.vibrate([30, 20, 30, 20, 60]);
         showStatus('All 12 provinces visited 🇳🇱', 'success', 2400);
     } else if (source !== 'list') {
-        showTooltip(`${province.name} ${state.visited[id] ? '✓' : ''}`.trim());
+        showTooltip(`${getProvinceName(id)} ${state.visited[id] ? '✓' : ''}`.trim());
     }
 }
 
@@ -108,7 +87,7 @@ function undoLast() {
     const { id, prevValue } = state.lastAction;
     state.visited[id] = prevValue;
     state.lastAction = null;
-    saveState();
+    saveVisited(state.visited);
     render();
     showStatus('Undone');
 }
@@ -117,13 +96,13 @@ function resetAll() {
     if (!confirm('Reset all visited provinces?')) return;
     state.visited = {};
     state.lastAction = null;
-    saveState();
+    saveVisited(state.visited);
     render();
     showStatus('Reset');
 }
 
 function popPath(id) {
-    const path = document.querySelector(`.province[data-province="${id}"]`);
+    const path = elements.map.querySelector(`.province[data-province="${id}"]`);
     if (!path) return;
     path.classList.remove('pop');
     void path.getBBox();
@@ -134,53 +113,49 @@ function popPath(id) {
 /* ───────── Tooltip + status toast ───────── */
 
 function showTooltip(text) {
-    const el = document.getElementById('tooltip');
-    el.textContent = text;
-    el.classList.add('show');
+    elements.tooltip.textContent = text;
+    elements.tooltip.classList.add('show');
     clearTimeout(tooltipTimer);
-    tooltipTimer = setTimeout(() => el.classList.remove('show'), 1100);
+    tooltipTimer = setTimeout(() => elements.tooltip.classList.remove('show'), 1100);
 }
 
 function showStatus(text, kind = '', ms = 1400) {
-    const el = document.getElementById('status');
-    el.textContent = text;
-    el.classList.remove('success', 'error');
-    if (kind) el.classList.add(kind);
-    el.classList.add('show');
+    elements.status.textContent = text;
+    elements.status.classList.remove('success', 'error');
+    if (kind) elements.status.classList.add(kind);
+    elements.status.classList.add('show');
     clearTimeout(statusTimer);
-    statusTimer = setTimeout(() => el.classList.remove('show'), ms);
+    statusTimer = setTimeout(() => elements.status.classList.remove('show'), ms);
 }
 
 /* ───────── Wiring ───────── */
 
 function bindEvents() {
-    const map = document.getElementById('map');
-    map.addEventListener('click', (e) => {
+    elements.map.addEventListener('click', (e) => {
         const path = e.target.closest('[data-province]');
         if (!path) return;
         toggleProvince(path.dataset.province, 'map');
     });
 
-    map.addEventListener('mousemove', (e) => {
+    elements.map.addEventListener('mousemove', (e) => {
         const path = e.target.closest('[data-province]');
         if (!path) return;
         const name = path.dataset.name || path.dataset.province;
         showTooltip(name);
     });
 
-    map.addEventListener('mouseleave', () => {
-        document.getElementById('tooltip').classList.remove('show');
+    elements.map.addEventListener('mouseleave', () => {
+        elements.tooltip.classList.remove('show');
     });
 
-    const list = document.getElementById('provinceList');
-    list.addEventListener('click', (e) => {
+    elements.provinceList.addEventListener('click', (e) => {
         const item = e.target.closest('.pv-item');
         if (!item) return;
         toggleProvince(item.dataset.province, 'list');
     });
 
-    document.getElementById('undoBtn').addEventListener('click', undoLast);
-    document.getElementById('resetBtn').addEventListener('click', resetAll);
+    elements.undoBtn.addEventListener('click', undoLast);
+    elements.resetBtn.addEventListener('click', resetAll);
 }
 
 function registerSW() {
@@ -194,7 +169,6 @@ function registerSW() {
 
 /* ───────── Init ───────── */
 
-loadState();
 buildList();
 bindEvents();
 render();
