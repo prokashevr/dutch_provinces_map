@@ -38,6 +38,17 @@ function cacheProvinceElements() {
     }
 }
 
+function prepareInteractiveElements() {
+    for (const refs of provinceElements.values()) {
+        for (const node of [refs.path, refs.item]) {
+            if (!node) continue;
+            node.setAttribute('tabindex', '0');
+            node.setAttribute('role', 'button');
+            node.setAttribute('aria-pressed', 'false');
+        }
+    }
+}
+
 /* ───────── State mutators ───────── */
 
 function setVisited(id, value) {
@@ -84,8 +95,15 @@ function render() {
         const refs = provinceElements.get(p.id);
         if (!refs) return;
         const isVisited = !!state.visited[p.id];
-        if (refs.path) refs.path.classList.toggle('visited', isVisited);
-        if (refs.item) refs.item.classList.toggle('is-visited', isVisited);
+        const pressed = isVisited ? 'true' : 'false';
+        if (refs.path) {
+            refs.path.classList.toggle('visited', isVisited);
+            refs.path.setAttribute('aria-pressed', pressed);
+        }
+        if (refs.item) {
+            refs.item.classList.toggle('is-visited', isVisited);
+            refs.item.setAttribute('aria-pressed', pressed);
+        }
     });
 
     elements.undoBtn.disabled = !state.lastAction;
@@ -188,8 +206,19 @@ function bindEvents() {
         toggleProvince(item.dataset.province, 'list');
     });
 
+    elements.map.addEventListener('keydown', handleKeyboardToggle);
+    elements.provinceList.addEventListener('keydown', handleKeyboardToggle);
+
     elements.undoBtn.addEventListener('click', undoLast);
     elements.resetBtn.addEventListener('click', resetAll);
+}
+
+function handleKeyboardToggle(event) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const target = event.target.closest('[data-province]');
+    if (!target) return;
+    event.preventDefault();
+    toggleProvince(target.dataset.province, 'keyboard');
 }
 
 function registerSW() {
@@ -205,6 +234,7 @@ function registerSW() {
 
 buildList();
 cacheProvinceElements();
+prepareInteractiveElements();
 bindEvents();
 render();
 registerSW();
