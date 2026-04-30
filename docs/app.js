@@ -18,6 +18,8 @@ const elements = {
     status:       getRequiredElement('status'),
 };
 
+const provinceElements = new Map();
+
 let state = {
     visited: loadVisited(),
     lastAction: null      // { id, prevValue } for one-level undo
@@ -25,6 +27,16 @@ let state = {
 
 let statusTimer = null;
 let tooltipTimer = null;
+
+function cacheProvinceElements() {
+    provinceElements.clear();
+    for (const p of PROVINCES) {
+        provinceElements.set(p.id, {
+            path: elements.map.querySelector(`.province[data-province="${p.id}"]`),
+            item: elements.provinceList.querySelector(`.pv-item[data-province="${p.id}"]`),
+        });
+    }
+}
 
 /* ───────── Render ───────── */
 
@@ -38,11 +50,11 @@ function render() {
     elements.progressBar.style.width = `${(count / TOTAL_PROVINCES) * 100}%`;
 
     PROVINCES.forEach(p => {
-        const path = elements.map.querySelector(`.province[data-province="${p.id}"]`);
-        const item = elements.provinceList.querySelector(`.pv-item[data-province="${p.id}"]`);
+        const refs = provinceElements.get(p.id);
+        if (!refs) return;
         const isVisited = !!state.visited[p.id];
-        if (path) path.classList.toggle('visited', isVisited);
-        if (item) item.classList.toggle('is-visited', isVisited);
+        if (refs.path) refs.path.classList.toggle('visited', isVisited);
+        if (refs.item) refs.item.classList.toggle('is-visited', isVisited);
     });
 
     elements.undoBtn.disabled = !state.lastAction;
@@ -102,7 +114,7 @@ function resetAll() {
 }
 
 function popPath(id) {
-    const path = elements.map.querySelector(`.province[data-province="${id}"]`);
+    const path = provinceElements.get(id)?.path;
     if (!path) return;
     path.classList.remove('pop');
     void path.getBBox();
@@ -170,6 +182,7 @@ function registerSW() {
 /* ───────── Init ───────── */
 
 buildList();
+cacheProvinceElements();
 bindEvents();
 render();
 registerSW();
