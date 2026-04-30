@@ -38,6 +38,37 @@ function cacheProvinceElements() {
     }
 }
 
+/* ───────── State mutators ───────── */
+
+function setVisited(id, value) {
+    if (!isKnownProvince(id)) return false;
+    const prevValue = !!state.visited[id];
+    state.visited = { ...state.visited, [id]: value };
+    state.lastAction = { id, prevValue };
+    saveVisited(state.visited);
+    return true;
+}
+
+function toggleVisited(id) {
+    if (!isKnownProvince(id)) return false;
+    return setVisited(id, !state.visited[id]);
+}
+
+function restoreLastAction() {
+    if (!state.lastAction) return false;
+    const { id, prevValue } = state.lastAction;
+    state.visited = { ...state.visited, [id]: prevValue };
+    state.lastAction = null;
+    saveVisited(state.visited);
+    return true;
+}
+
+function clearVisited() {
+    state.visited = {};
+    state.lastAction = null;
+    saveVisited(state.visited);
+}
+
 /* ───────── Render ───────── */
 
 function visitedCount() {
@@ -75,40 +106,31 @@ function buildList() {
 /* ───────── Interaction ───────── */
 
 function toggleProvince(id, source) {
-    if (!isKnownProvince(id)) return;
+    if (!toggleVisited(id)) return;
 
-    state.lastAction = { id, prevValue: !!state.visited[id] };
-    state.visited[id] = !state.visited[id];
-
-    saveVisited(state.visited);
     render();
     popPath(id);
 
-    if (navigator.vibrate) navigator.vibrate(state.visited[id] ? 18 : 10);
+    const isVisited = !!state.visited[id];
+    if (navigator.vibrate) navigator.vibrate(isVisited ? 18 : 10);
 
     if (visitedCount() === TOTAL_PROVINCES) {
         if (navigator.vibrate) navigator.vibrate([30, 20, 30, 20, 60]);
         showStatus('All 12 provinces visited 🇳🇱', 'success', 2400);
     } else if (source !== 'list') {
-        showTooltip(`${getProvinceName(id)} ${state.visited[id] ? '✓' : ''}`.trim());
+        showTooltip(`${getProvinceName(id)} ${isVisited ? '✓' : ''}`.trim());
     }
 }
 
 function undoLast() {
-    if (!state.lastAction) return;
-    const { id, prevValue } = state.lastAction;
-    state.visited[id] = prevValue;
-    state.lastAction = null;
-    saveVisited(state.visited);
+    if (!restoreLastAction()) return;
     render();
     showStatus('Undone');
 }
 
 function resetAll() {
     if (!confirm('Reset all visited provinces?')) return;
-    state.visited = {};
-    state.lastAction = null;
-    saveVisited(state.visited);
+    clearVisited();
     render();
     showStatus('Reset');
 }
