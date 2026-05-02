@@ -1,5 +1,5 @@
 // Bump this after changing any shell asset so installed PWAs update correctly.
-const CACHE_NAME = 'nl-provinces-v5';
+const CACHE_NAME = 'nl-provinces-v6';
 
 const SHELL_ASSETS = [
     './',
